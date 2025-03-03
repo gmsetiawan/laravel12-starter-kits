@@ -19,6 +19,7 @@ export interface NavItem {
     url: string;
     icon?: LucideIcon | null;
     isActive?: boolean;
+    items?: { title: string; url: string }[];
 }
 
 export interface SharedData {
@@ -37,4 +38,15 @@ export interface User {
     created_at: string;
     updated_at: string;
     [key: string]: unknown; // This allows for additional properties...
+}
+
+export interface Todo {
+    id: number;
+    description: string;
+    completed: boolean;
+    priority: 'low' | 'medium' | 'high';
+    user_id: number;
+    user_name: string;
+    created_at: string;
+    updated_at: string;
 }
