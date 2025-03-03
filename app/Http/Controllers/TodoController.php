@@ -15,29 +15,38 @@ class TodoController extends Controller
         $status = $request->input('status', []); // ['completed', 'incomplete']
         $priorities = $request->input('priorities', []); // ['low', 'medium', 'high']
 
+        // Create base query builder
         $query = Todo::with('user');
 
-        // Apply search filter to the base query
-        if ($search && strlen($search) >= 3) {
-            $query->where('description', 'like', "%{$search}%");
-        }
+        // Create a function to apply all filters
+        $applyFilters = function ($query) use ($search, $status, $priorities) {
+            // Apply search filter
+            if ($search && strlen($search) >= 3) {
+                $query->where('description', 'like', "%{$search}%");
+            }
 
-        // Filter by status
-        if (!empty($status)) {
-            $query->where(function ($q) use ($status) {
-                if (in_array('completed', $status)) {
-                    $q->orWhere('completed', true);
-                }
-                if (in_array('incomplete', $status)) {
-                    $q->orWhere('completed', false);
-                }
-            });
-        }
+            // Apply status filter
+            if (!empty($status)) {
+                $query->where(function ($q) use ($status) {
+                    if (in_array('completed', $status)) {
+                        $q->orWhere('completed', true);
+                    }
+                    if (in_array('incomplete', $status)) {
+                        $q->orWhere('completed', false);
+                    }
+                });
+            }
 
-        // Filter by priority
-        if (!empty($priorities)) {
-            $query->whereIn('priority', $priorities);
-        }
+            // Apply priority filter
+            if (!empty($priorities)) {
+                $query->whereIn('priority', $priorities);
+            }
+
+            return $query;
+        };
+
+        // Apply filters to main query
+        $query = $applyFilters($query);
 
         // Get the filtered todos with pagination
         $todos = $query->orderBy('created_at', 'desc')
@@ -49,11 +58,9 @@ class TodoController extends Controller
                 return $todo;
             });
 
-        // Calculate counts using the same search filter
+        // Calculate counts using the same filters
         $totalQuery = Todo::query();
-        if ($search && strlen($search) >= 3) {
-            $totalQuery->where('description', 'like', "%{$search}%");
-        }
+        $totalQuery = $applyFilters($totalQuery);
 
         $completedCount = (clone $totalQuery)->where('completed', true)->count();
         $incompleteCount = (clone $totalQuery)->where('completed', false)->count();
@@ -67,6 +74,8 @@ class TodoController extends Controller
             ],
             'filters' => [
                 'search' => $search,
+                'status' => $status,
+                'priorities' => $priorities,
             ],
         ]);
     }
