@@ -12,12 +12,31 @@ class TodoController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $status = $request->input('status', []); // ['completed', 'incomplete']
+        $priorities = $request->input('priorities', []); // ['low', 'medium', 'high']
 
         $query = Todo::with('user');
 
         // Apply search filter to the base query
-        if ($search) {
+        if ($search && strlen($search) >= 3) {
             $query->where('description', 'like', "%{$search}%");
+        }
+
+        // Filter by status
+        if (!empty($status)) {
+            $query->where(function ($q) use ($status) {
+                if (in_array('completed', $status)) {
+                    $q->orWhere('completed', true);
+                }
+                if (in_array('incomplete', $status)) {
+                    $q->orWhere('completed', false);
+                }
+            });
+        }
+
+        // Filter by priority
+        if (!empty($priorities)) {
+            $query->whereIn('priority', $priorities);
         }
 
         // Get the filtered todos with pagination
@@ -32,7 +51,7 @@ class TodoController extends Controller
 
         // Calculate counts using the same search filter
         $totalQuery = Todo::query();
-        if ($search) {
+        if ($search && strlen($search) >= 3) {
             $totalQuery->where('description', 'like', "%{$search}%");
         }
 

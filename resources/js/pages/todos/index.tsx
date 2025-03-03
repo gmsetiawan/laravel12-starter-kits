@@ -1,3 +1,4 @@
+import { TodoFilters } from '@/components/todo-filters';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -48,9 +49,14 @@ export default function Index({
     };
     filters: {
         search: string;
+        status: string[];
+        priorities: string[];
     };
 }) {
     const [search, setSearch] = useState(filters.search || '');
+    const [status, setStatus] = useState<string[]>(filters.status || []);
+    const [priorities, setPriorities] = useState<string[]>(filters.priorities || []);
+
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -75,26 +81,72 @@ export default function Index({
         completed: false,
     });
 
-    // Add debounced search function
+    // Update the debouncedSearch function
     const debouncedSearch = useMemo(() => {
         return debounce((query: string) => {
-            get(
-                route('todos.index', {
-                    search: query,
-                    page: 1,
-                }),
-                {
-                    preserveState: true,
-                    preserveScroll: true,
-                },
-            );
+            if (query.length >= 3 || query.length === 0) {
+                get(
+                    route('todos.index', {
+                        search: query,
+                        status,
+                        priorities,
+                        page: 1,
+                    }),
+                    {
+                        preserveState: true,
+                        preserveScroll: true,
+                    },
+                );
+            }
         }, 300);
-    }, []);
+    }, [status, priorities, get]);
 
     // Add search handler
     const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearch(e.target.value);
         debouncedSearch(e.target.value);
+    };
+
+    const handleStatusChange = (values: string[]) => {
+        setStatus(values);
+        get(
+            route('todos.index', {
+                search,
+                status: values,
+                priorities,
+                page: 1,
+            }),
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
+    };
+
+    const handlePriorityChange = (values: string[]) => {
+        setPriorities(values);
+        get(
+            route('todos.index', {
+                search,
+                status,
+                priorities: values,
+                page: 1,
+            }),
+            {
+                preserveState: true,
+                preserveScroll: true,
+            },
+        );
+    };
+
+    const handleResetFilters = () => {
+        setSearch('');
+        setStatus([]);
+        setPriorities([]);
+        get(route('todos.index'), {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleCreate = () => {
@@ -182,8 +234,14 @@ export default function Index({
                     </div>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                    <div className="">
+                    <div className="flex items-center gap-4">
                         <Input placeholder="Search" className="w-full lg:w-64" value={search} onChange={handleSearch} />
+                        <TodoFilters
+                            onStatusChange={handleStatusChange}
+                            onPriorityChange={handlePriorityChange}
+                            onReset={handleResetFilters}
+                            hasFilters={search !== '' || status.length > 0 || priorities.length > 0}
+                        />
                     </div>
                     <Button onClick={() => setIsCreateModalOpen(true)} size={'sm'} variant={'outline'}>
                         <PlusIcon className="mr-2 h-4 w-4" />
